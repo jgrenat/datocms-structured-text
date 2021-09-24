@@ -1,4 +1,4 @@
-module Types exposing (..)
+module StructuredText.Types exposing (..)
 
 
 type StructuredText a

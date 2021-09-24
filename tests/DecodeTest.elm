@@ -1,10 +1,10 @@
-module StructuredTextTest exposing (..)
+module DecodeTest exposing (..)
 
 import Expect exposing (Expectation)
 import Json.Decode as Decode exposing (Decoder, Error(..))
-import StructuredText
+import StructuredText.Decode
+import StructuredText.Types exposing (BlockId(..), BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 import Test exposing (..)
-import Types exposing (BlockId(..), BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 
 
 type alias ImageBlock =
@@ -38,9 +38,8 @@ imageFormatDecoder =
 
 suite : Test
 suite =
-    describe "The StructuredText module"
+    describe "The StructuredText.Decode module"
         [ describe "decoder"
-            -- Nest as many descriptions as you like.
             [ test "should decode an empty document" <|
                 \_ ->
                     let
@@ -48,7 +47,7 @@ suite =
                             """{ "schema": "dast", "document": { "type": "root", "children": [] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal (Ok (StructuredText [])) result
             , test "should reject a document with invalid schema type" <|
@@ -58,7 +57,7 @@ suite =
                             """{ "schema": "dats", "document": { "type": "root", "children": [] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     case result of
                         Err (Field "schema" (Failure "Invalid schema type" _)) ->
@@ -73,7 +72,7 @@ suite =
                             """{ "schema": "dast", "document": { "type": "roto", "children": [] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     case result of
                         Err (Field "document" (Field "type" (Failure "Invalid root type" _))) ->
@@ -88,7 +87,7 @@ suite =
                             """{ "schema": "dast", "document": { "type": "root", "children": [ { "type": "thematicBreak" } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal (Ok (StructuredText [ RootThematicBreak ThematicBreakNode ])) result
             , test "should decode a document with a simple code" <|
@@ -103,7 +102,7 @@ suite =
                             ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -126,7 +125,7 @@ suite =
                             """{ "schema": "dast", "document": { "type": "root", "children": [ { "type": "paragraph", "children": [] } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal (Ok (StructuredText [ RootParagraph (ParagraphNode []) ])) result
             , test "should decode a document with a paragraph containing a span with no mark" <|
@@ -141,7 +140,7 @@ suite =
                         } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -167,7 +166,7 @@ suite =
                         } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -197,7 +196,7 @@ suite =
                         } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -231,7 +230,7 @@ suite =
                         } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.err result
             , test "should decode a document with a paragraph containing a link with meta and children" <|
@@ -250,7 +249,7 @@ suite =
                         } ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -285,7 +284,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -312,7 +311,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.err result
             , test "should fail decoding a document with a heading with a missing level" <|
@@ -326,7 +325,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.err result
             , test "should decode a document with a list and no children" <|
@@ -341,7 +340,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal (Ok (StructuredText [ RootList (ListNode { style = Bulleted } []) ])) result
             , test "should fail decoding a document with a list with invalid style" <|
@@ -356,7 +355,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.err result
             , test "should fail decoding a document with a list with missing style" <|
@@ -370,7 +369,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.err result
             , test "should decode a document with a list and complex children" <|
@@ -388,7 +387,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -418,7 +417,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok (StructuredText [ RootBlockquote (BlockquoteNode { attribution = Nothing } []) ]))
@@ -435,7 +434,7 @@ suite =
                         ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
                         (Ok
@@ -466,7 +465,7 @@ suite =
 
                         result =
                             Decode.decodeString
-                                (StructuredText.decoder
+                                (StructuredText.Decode.decoder
                                     [ ( BlockId "58599620", ImageBlock "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth )
                                     ]
                                 )
@@ -495,7 +494,7 @@ suite =
                             ] } }"""
 
                         result =
-                            Decode.decodeString (StructuredText.decoder []) input
+                            Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     case result of
                         Err (Field "document" (Field "children" (Index 0 (Failure "Unable to find a matching block with ID 58599620" _)))) ->
@@ -518,7 +517,7 @@ suite =
                              }"""
 
                         result =
-                            Decode.decodeString (StructuredText.blockDecoder imageBlockDecoder) input
+                            Decode.decodeString (StructuredText.Decode.blockDecoder imageBlockDecoder) input
                     in
                     Expect.equal
                         (Ok
