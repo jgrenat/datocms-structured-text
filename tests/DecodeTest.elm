@@ -3,11 +3,11 @@ module DecodeTest exposing (..)
 import Expect exposing (Expectation)
 import Json.Decode as Decode exposing (Decoder, Error(..))
 import StructuredText.Decode
-import StructuredText.Types exposing (BlockId(..), BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
+import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 import Test exposing (..)
 
 
-type alias ImageBlock =
+type alias ImageItem =
     { imageUrl : String, format : ImageFormat }
 
 
@@ -16,9 +16,9 @@ type ImageFormat
     | ImageWidth
 
 
-imageBlockDecoder : Decoder ImageBlock
+imageBlockDecoder : Decoder ImageItem
 imageBlockDecoder =
-    Decode.map2 ImageBlock
+    Decode.map2 ImageItem
         (Decode.at [ "image", "url" ] Decode.string)
         (Decode.field "fullWidth" imageFormatDecoder)
 
@@ -466,7 +466,7 @@ suite =
                         result =
                             Decode.decodeString
                                 (StructuredText.Decode.decoder
-                                    [ ( BlockId "58599620", ImageBlock "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth )
+                                    [ ( ItemId "58599620", ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth )
                                     ]
                                 )
                                 input
@@ -475,8 +475,10 @@ suite =
                         (Ok
                             (StructuredText
                                 [ RootBlock
-                                    (BlockNode (BlockId "58599620")
-                                        (ImageBlock "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth)
+                                    (BlockNode
+                                        { itemId = ItemId "58599620"
+                                        , itemContent = ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                        }
                                     )
                                 ]
                             )
@@ -497,11 +499,201 @@ suite =
                             Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     case result of
-                        Err (Field "document" (Field "children" (Index 0 (Failure "Unable to find a matching block with ID 58599620" _)))) ->
+                        Err (Field "document" (Field "children" (Index 0 (Failure "Unable to find a matching item with ID 58599620" _)))) ->
                             Expect.pass
+
+                        Err _ ->
+                            Expect.fail "There was an error but not the one expected. There should be an error specifying that the block was not found."
 
                         _ ->
                             Expect.fail "There should be an error specifying that the block was not found"
+            , test "should decode a document with a heading containing an inline item" <|
+                \_ ->
+                    let
+                        input =
+                            """{ "schema": "dast", "document": { "type": "root", "children": [
+                              {
+                                "type": "heading",
+                                "level": 4,
+                                "children": [
+                                  {
+                                    "item": "58599620",
+                                    "type": "inlineItem"
+                                  }
+                                ]
+                              }
+                            ] } }"""
+
+                        result =
+                            Decode.decodeString
+                                (StructuredText.Decode.decoder
+                                    [ ( ItemId "58599620"
+                                      , ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                      )
+                                    ]
+                                )
+                                input
+                    in
+                    Expect.equal
+                        (Ok
+                            (StructuredText
+                                [ RootHeading
+                                    (HeadingNode { level = H4 }
+                                        [ HeadingInlineItem
+                                            (InlineItemNode
+                                                { itemId = ItemId "58599620"
+                                                , itemContent = ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                                }
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
+                        )
+                        result
+            , test "should decode a document with a paragraph containing an inline item" <|
+                \_ ->
+                    let
+                        input =
+                            """{ "schema": "dast", "document": { "type": "root", "children": [
+                              {
+                                "type": "paragraph",
+                                "children": [
+                                  {
+                                    "item": "58599620",
+                                    "type": "inlineItem"
+                                  }
+                                ]
+                              }
+                            ] } }"""
+
+                        result =
+                            Decode.decodeString
+                                (StructuredText.Decode.decoder
+                                    [ ( ItemId "58599620"
+                                      , ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                      )
+                                    ]
+                                )
+                                input
+                    in
+                    Expect.equal
+                        (Ok
+                            (StructuredText
+                                [ RootParagraph
+                                    (ParagraphNode
+                                        [ ParagraphInlineItem
+                                            (InlineItemNode
+                                                { itemId = ItemId "58599620"
+                                                , itemContent = ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                                }
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
+                        )
+                        result
+            , test "should decode a document with a paragraph containing an item link" <|
+                \_ ->
+                    let
+                        input =
+                            """{ "schema": "dast", "document": { "type": "root", "children": [
+                              {
+                                "type": "paragraph",
+                                "children": [
+                                  {
+                                    "item": "58599620",
+                                    "type": "itemLink",
+                                    "children": [{
+                                      "type": "span",
+                                      "value": "inline link"
+                                    }]
+                                  }
+                                ]
+                              }
+                            ] } }"""
+
+                        result =
+                            Decode.decodeString
+                                (StructuredText.Decode.decoder
+                                    [ ( ItemId "58599620"
+                                      , ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                      )
+                                    ]
+                                )
+                                input
+                    in
+                    Expect.equal
+                        (Ok
+                            (StructuredText
+                                [ RootParagraph
+                                    (ParagraphNode
+                                        [ ParagraphItemLink
+                                            (ItemLinkNode
+                                                { itemId = ItemId "58599620"
+                                                , itemContent = ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                                , meta = []
+                                                }
+                                                [ ItemLinkSpan (SpanNode { value = "inline link", marks = [] }) ]
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
+                        )
+                        result
+            , test "should decode a document with a heading containing an item link" <|
+                \_ ->
+                    let
+                        input =
+                            """{ "schema": "dast", "document": { "type": "root", "children": [
+                              {
+                                "type": "heading",
+                                "level": 5,
+                                "children": [
+                                  {
+                                    "item": "58599620",
+                                    "type": "itemLink",
+                                    "meta": [ { "id": "metaId", "value": "metaValue" } ],
+                                    "children": [{
+                                      "type": "span",
+                                      "value": "inline link"
+                                    }]
+                                  }
+                                ]
+                              }
+                            ] } }"""
+
+                        result =
+                            Decode.decodeString
+                                (StructuredText.Decode.decoder
+                                    [ ( ItemId "58599620"
+                                      , ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                      )
+                                    ]
+                                )
+                                input
+                    in
+                    Expect.equal
+                        (Ok
+                            (StructuredText
+                                [ RootHeading
+                                    (HeadingNode { level = H5 }
+                                        [ HeadingItemLink
+                                            (ItemLinkNode
+                                                { itemId = ItemId "58599620"
+                                                , itemContent = ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth
+                                                , meta = [ ( "metaId", "metaValue" ) ]
+                                                }
+                                                [ ItemLinkSpan (SpanNode { value = "inline link", marks = [] }) ]
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
+                        )
+                        result
             ]
         , describe "blockDecoder"
             [ test "should decode an image block" <|
@@ -517,11 +709,11 @@ suite =
                              }"""
 
                         result =
-                            Decode.decodeString (StructuredText.Decode.blockDecoder imageBlockDecoder) input
+                            Decode.decodeString (StructuredText.Decode.itemDecoder imageBlockDecoder) input
                     in
                     Expect.equal
                         (Ok
-                            ( BlockId "58599620", ImageBlock "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth )
+                            ( ItemId "58599620", ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth )
                         )
                         result
             ]

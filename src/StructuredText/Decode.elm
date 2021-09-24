@@ -1,43 +1,43 @@
-module StructuredText.Decode exposing (blockDecoder, decoder, toHtml)
+module StructuredText.Decode exposing (decoder, itemDecoder, toHtml)
 
 import Html exposing (Html, text)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Extra as Decode
 import List.Extra as List
-import StructuredText.Types exposing (BlockId(..), BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
+import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 
 
 {-| Decodes a DatoCMS Dast schema
 -}
-decoder : List ( BlockId, a ) -> Decoder (StructuredText a)
-decoder blocks =
+decoder : List ( ItemId, a ) -> Decoder (StructuredText a)
+decoder items =
     Decode.field "schema" (constantStringDecoder "Invalid schema type" "dast")
-        |> Decode.andThen (\() -> Decode.field "document" (documentDecoder blocks))
+        |> Decode.andThen (\() -> Decode.field "document" (documentDecoder items))
         |> Decode.map StructuredText
 
 
-{-| Decodes a DatoCMS block with its block ID
+{-| Decodes a DatoCMS item with its item ID
 -}
-blockDecoder : Decoder a -> Decoder ( BlockId, a )
-blockDecoder blockContentDecoder =
+itemDecoder : Decoder a -> Decoder ( ItemId, a )
+itemDecoder itemContentDecoder =
     Decode.map2 Tuple.pair
-        (Decode.field "id" blockIdDecoder)
-        blockContentDecoder
+        (Decode.field "id" itemIdDecoder)
+        itemContentDecoder
 
 
-blockIdDecoder : Decoder BlockId
-blockIdDecoder =
-    Decode.map BlockId Decode.string
+itemIdDecoder : Decoder ItemId
+itemIdDecoder =
+    Decode.map ItemId Decode.string
 
 
-documentDecoder : List ( BlockId, a ) -> Decoder (List (RootChildNode a))
-documentDecoder blocks =
+documentDecoder : List ( ItemId, a ) -> Decoder (List (RootChildNode a))
+documentDecoder items =
     Decode.field "type" (constantStringDecoder "Invalid root type" "root")
-        |> Decode.andThen (\() -> Decode.field "children" (Decode.list (rootChildNodeDecoder blocks)))
+        |> Decode.andThen (\() -> Decode.field "children" (Decode.list (rootChildNodeDecoder items)))
 
 
-rootChildNodeDecoder : List ( BlockId, a ) -> Decoder (RootChildNode a)
-rootChildNodeDecoder blocks =
+rootChildNodeDecoder : List ( ItemId, a ) -> Decoder (RootChildNode a)
+rootChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
@@ -49,19 +49,19 @@ rootChildNodeDecoder blocks =
                         Decode.map RootCode codeNodeDecoder
 
                     "paragraph" ->
-                        Decode.map RootParagraph paragraphNodeDecoder
+                        Decode.map RootParagraph (paragraphNodeDecoder items)
 
                     "heading" ->
-                        Decode.map RootHeading headingNodeDecoder
+                        Decode.map RootHeading (headingNodeDecoder items)
 
                     "list" ->
-                        Decode.map RootList listNodeDecoder
+                        Decode.map RootList (listNodeDecoder items)
 
                     "blockquote" ->
-                        Decode.map RootBlockquote blockquoteNodeDecoder
+                        Decode.map RootBlockquote (blockquoteNodeDecoder items)
 
                     "block" ->
-                        Decode.map RootBlock (blockNodeDecoder blocks)
+                        Decode.map RootBlock (blockNodeDecoder items)
 
                     _ ->
                         Decode.fail ("Unknown or unallowed root node type " ++ typeString)
@@ -86,14 +86,14 @@ codeNodeDecoder =
         )
 
 
-paragraphNodeDecoder : Decoder ParagraphNode
-paragraphNodeDecoder =
-    Decode.field "children" (Decode.list paragraphChildNodeDecoder)
+paragraphNodeDecoder : List ( ItemId, a ) -> Decoder (ParagraphNode a)
+paragraphNodeDecoder items =
+    Decode.field "children" (Decode.list (paragraphChildNodeDecoder items))
         |> Decode.map ParagraphNode
 
 
-paragraphChildNodeDecoder : Decoder ParagraphChildNode
-paragraphChildNodeDecoder =
+paragraphChildNodeDecoder : List ( ItemId, a ) -> Decoder (ParagraphChildNode a)
+paragraphChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
@@ -103,6 +103,12 @@ paragraphChildNodeDecoder =
 
                     "link" ->
                         linkNodeDecoder |> Decode.map ParagraphLink
+
+                    "inlineItem" ->
+                        inlineItemNodeDecoder items |> Decode.map ParagraphInlineItem
+
+                    "itemLink" ->
+                        itemLinkNodeDecoder items |> Decode.map ParagraphItemLink
 
                     _ ->
                         Decode.fail ("Unknown paragraph child node type " ++ typeString)
@@ -178,15 +184,15 @@ markDecoder =
             )
 
 
-headingNodeDecoder : Decoder HeadingNode
-headingNodeDecoder =
+headingNodeDecoder : List ( ItemId, a ) -> Decoder (HeadingNode a)
+headingNodeDecoder items =
     Decode.map2 (\level children -> HeadingNode { level = level } children)
         (Decode.field "level" headingLevelDecoder)
-        (Decode.field "children" (Decode.list headingChildNodeDecoder))
+        (Decode.field "children" (Decode.list (headingChildNodeDecoder items)))
 
 
-headingChildNodeDecoder : Decoder HeadingChildNode
-headingChildNodeDecoder =
+headingChildNodeDecoder : List ( ItemId, a ) -> Decoder (HeadingChildNode a)
+headingChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
@@ -196,6 +202,12 @@ headingChildNodeDecoder =
 
                     "link" ->
                         linkNodeDecoder |> Decode.map HeadingLink
+
+                    "inlineItem" ->
+                        inlineItemNodeDecoder items |> Decode.map HeadingInlineItem
+
+                    "itemLink" ->
+                        itemLinkNodeDecoder items |> Decode.map HeadingItemLink
 
                     _ ->
                         Decode.fail ("Unknown heading child node type " ++ typeString)
@@ -231,11 +243,11 @@ headingLevelDecoder =
             )
 
 
-listNodeDecoder : Decoder ListNode
-listNodeDecoder =
+listNodeDecoder : List ( ItemId, a ) -> Decoder (ListNode a)
+listNodeDecoder items =
     Decode.map2 (\style children -> ListNode { style = style } children)
         (Decode.field "style" listStyleDecoder)
-        (Decode.field "children" (Decode.list listChildNodeDecoder))
+        (Decode.field "children" (Decode.list (listChildNodeDecoder items)))
 
 
 listStyleDecoder : Decoder ListStyle
@@ -255,77 +267,123 @@ listStyleDecoder =
             )
 
 
-listChildNodeDecoder : Decoder ListChildNode
-listChildNodeDecoder =
+listChildNodeDecoder : List ( ItemId, a ) -> Decoder (ListChildNode a)
+listChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
                 case typeString of
                     "listItem" ->
-                        listItemNodeDecoder |> Decode.map ListListItem
+                        listItemNodeDecoder items |> Decode.map ListListItem
 
                     _ ->
                         Decode.fail ("Unknown list child node type " ++ typeString)
             )
 
 
-listItemNodeDecoder : Decoder ListItemNode
-listItemNodeDecoder =
+listItemNodeDecoder : List ( ItemId, a ) -> Decoder (ListItemNode a)
+listItemNodeDecoder items =
     Decode.map ListItemNode
-        (Decode.field "children" (Decode.list listItemChildNodeDecoder))
+        (Decode.field "children" (Decode.list (listItemChildNodeDecoder items)))
 
 
-listItemChildNodeDecoder : Decoder ListItemChildNode
-listItemChildNodeDecoder =
+listItemChildNodeDecoder : List ( ItemId, a ) -> Decoder (ListItemChildNode a)
+listItemChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
                 case typeString of
                     "paragraph" ->
-                        paragraphNodeDecoder |> Decode.map ListItemParagraph
+                        paragraphNodeDecoder items |> Decode.map ListItemParagraph
 
                     "list" ->
-                        listNodeDecoder |> Decode.map ListItemList
+                        listNodeDecoder items |> Decode.map ListItemList
 
                     _ ->
                         Decode.fail ("Unknown list item child node type " ++ typeString)
             )
 
 
-blockquoteNodeDecoder : Decoder BlockquoteNode
-blockquoteNodeDecoder =
+blockquoteNodeDecoder : List ( ItemId, a ) -> Decoder (BlockquoteNode a)
+blockquoteNodeDecoder items =
     Decode.map2 (\attribution children -> BlockquoteNode { attribution = attribution } children)
         (Decode.optionalField "attribution" Decode.string)
-        (Decode.field "children" (Decode.list blockquoteNodeChildDecoder))
+        (Decode.field "children" (Decode.list (blockquoteNodeChildDecoder items)))
 
 
-blockquoteNodeChildDecoder : Decoder BlockquoteChildNode
-blockquoteNodeChildDecoder =
+blockquoteNodeChildDecoder : List ( ItemId, a ) -> Decoder (BlockquoteChildNode a)
+blockquoteNodeChildDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
                 case typeString of
                     "paragraph" ->
-                        paragraphNodeDecoder |> Decode.map BlockquoteParagraph
+                        paragraphNodeDecoder items |> Decode.map BlockquoteParagraph
 
                     _ ->
                         Decode.fail ("Unknown blockquote child node type " ++ typeString)
             )
 
 
-blockNodeDecoder : List ( BlockId, a ) -> Decoder (BlockNode a)
-blockNodeDecoder blocks =
-    Decode.field "item" blockIdDecoder
+blockNodeDecoder : List ( ItemId, a ) -> Decoder (BlockNode a)
+blockNodeDecoder items =
+    Decode.field "item" itemIdDecoder
         |> Decode.andThen
-            (\blockIdToFind ->
-                List.find (\( blockId, _ ) -> blockId == blockIdToFind) blocks
-                    |> Maybe.map (\( blockId, blockContent ) -> BlockNode blockId blockContent |> Decode.succeed)
-                    |> Maybe.withDefault (Decode.fail ("Unable to find a matching block with ID " ++ blockIdToString blockIdToFind))
+            (\itemIdToFind ->
+                List.find (\( itemId, _ ) -> itemId == itemIdToFind) items
+                    |> Maybe.map (\( itemId, itemContent ) -> BlockNode { itemId = itemId, itemContent = itemContent } |> Decode.succeed)
+                    |> Maybe.withDefault (Decode.fail ("Unable to find a matching item with ID " ++ itemIdToString itemIdToFind))
             )
 
 
-blockIdToString : BlockId -> String
-blockIdToString (BlockId blockId) =
+inlineItemNodeDecoder : List ( ItemId, a ) -> Decoder (InlineItemNode a)
+inlineItemNodeDecoder items =
+    Decode.field "item" itemIdDecoder
+        |> Decode.andThen
+            (\itemIdToFind ->
+                List.find (\( itemId, _ ) -> itemId == itemIdToFind) items
+                    |> Maybe.map (\( itemId, itemContent ) -> InlineItemNode { itemId = itemId, itemContent = itemContent } |> Decode.succeed)
+                    |> Maybe.withDefault (Decode.fail ("Unable to find a matching item with ID " ++ itemIdToString itemIdToFind))
+            )
+
+
+itemLinkNodeDecoder : List ( ItemId, a ) -> Decoder (ItemLinkNode a)
+itemLinkNodeDecoder items =
+    let
+        itemLinkNodeItemDecoder : Decoder ( ItemId, a )
+        itemLinkNodeItemDecoder =
+            Decode.field "item" itemIdDecoder
+                |> Decode.andThen
+                    (\itemIdToFind ->
+                        List.find (\( itemId, _ ) -> itemId == itemIdToFind) items
+                            |> Maybe.map Decode.succeed
+                            |> Maybe.withDefault (Decode.fail ("Unable to find a matching item with ID " ++ itemIdToString itemIdToFind))
+                    )
+    in
+    Decode.map3 (\( itemId, itemContent ) meta children -> ItemLinkNode { itemId = itemId, itemContent = itemContent, meta = meta } children)
+        itemLinkNodeItemDecoder
+        (Decode.optionalField "meta" (Decode.list linkMetaDecoder)
+            |> Decode.map (Maybe.withDefault [])
+        )
+        (Decode.field "children" (Decode.list itemLinkNodeChildDecoder))
+
+
+itemLinkNodeChildDecoder : Decoder ItemLinkChildNode
+itemLinkNodeChildDecoder =
+    Decode.field "type" Decode.string
+        |> Decode.andThen
+            (\typeString ->
+                case typeString of
+                    "span" ->
+                        spanNodeDecoder |> Decode.map ItemLinkSpan
+
+                    _ ->
+                        Decode.fail ("Unknown or invalid item link child node type " ++ typeString)
+            )
+
+
+itemIdToString : ItemId -> String
+itemIdToString (ItemId blockId) =
     blockId
 
 

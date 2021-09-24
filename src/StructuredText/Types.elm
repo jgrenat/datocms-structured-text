@@ -6,56 +6,60 @@ type StructuredText a
 
 
 type RootChildNode a
-    = RootParagraph ParagraphNode
-    | RootHeading HeadingNode
-    | RootList ListNode
+    = RootParagraph (ParagraphNode a)
+    | RootHeading (HeadingNode a)
+    | RootList (ListNode a)
     | RootCode CodeNode
-    | RootBlockquote BlockquoteNode
+    | RootBlockquote (BlockquoteNode a)
     | RootThematicBreak ThematicBreakNode
     | RootBlock (BlockNode a)
 
 
-type ParagraphChildNode
+type ParagraphChildNode a
     = ParagraphSpan SpanNode
     | ParagraphLink LinkNode
+    | ParagraphInlineItem (InlineItemNode a)
+    | ParagraphItemLink (ItemLinkNode a)
 
 
-type HeadingChildNode
+type HeadingChildNode a
     = HeadingSpan SpanNode
     | HeadingLink LinkNode
+    | HeadingInlineItem (InlineItemNode a)
+    | HeadingItemLink (ItemLinkNode a)
 
 
-type ListChildNode
-    = ListListItem ListItemNode
+type ListChildNode a
+    = ListListItem (ListItemNode a)
 
 
-type ListItemChildNode
-    = ListItemParagraph ParagraphNode
-    | ListItemList ListNode
+type ListItemChildNode a
+    = ListItemParagraph (ParagraphNode a)
+    | ListItemList (ListNode a)
 
 
 type LinkChildNode
     = LinkSpan SpanNode
 
 
-type BlockquoteChildNode
-    = BlockquoteParagraph ParagraphNode
+type BlockquoteChildNode a
+    = BlockquoteParagraph (ParagraphNode a)
 
 
-type ParagraphNode
-    = ParagraphNode (List ParagraphChildNode)
+type ParagraphNode a
+    = ParagraphNode (List (ParagraphChildNode a))
 
 
-type HeadingNode
-    = HeadingNode { level : HeadingLevel } (List HeadingChildNode)
+type HeadingNode a
+    = HeadingNode { level : HeadingLevel } (List (HeadingChildNode a))
 
 
-type ListNode
-    = ListNode { style : ListStyle } (List ListChildNode)
+type ListNode a
+    = ListNode { style : ListStyle } (List (ListChildNode a))
 
 
-type ListItemNode
-    = ListItemNode (List ListItemChildNode)
+type ListItemNode a
+    = ListItemNode (List (ListItemChildNode a))
 
 
 type CodeNode
@@ -66,8 +70,8 @@ type CodeNode
         }
 
 
-type BlockquoteNode
-    = BlockquoteNode { attribution : Maybe String } (List BlockquoteChildNode)
+type BlockquoteNode a
+    = BlockquoteNode { attribution : Maybe String } (List (BlockquoteChildNode a))
 
 
 type ThematicBreakNode
@@ -86,12 +90,35 @@ type LinkNode
         (List LinkChildNode)
 
 
+type InlineItemNode a
+    = InlineItemNode
+        { itemId : ItemId
+        , itemContent : a
+        }
+
+
+type ItemLinkNode a
+    = ItemLinkNode
+        { itemId : ItemId
+        , itemContent : a
+        , meta : List ( String, String )
+        }
+        (List ItemLinkChildNode)
+
+
+type ItemLinkChildNode
+    = ItemLinkSpan SpanNode
+
+
 type BlockNode a
-    = BlockNode BlockId a
+    = BlockNode
+        { itemId : ItemId
+        , itemContent : a
+        }
 
 
-type BlockId
-    = BlockId String
+type ItemId
+    = ItemId String
 
 
 type Mark
