@@ -1,28 +1,43 @@
-module StructuredText exposing (decoder, toHtml)
+module StructuredText exposing (blockDecoder, decoder, toHtml)
 
 import Html exposing (Html, text)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Extra as Decode
-import Types exposing (BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
+import List.Extra as List
+import Types exposing (BlockId(..), BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 
 
 {-| Decodes a DatoCMS Dast schema
 -}
-decoder : Decoder StructuredText
-decoder =
+decoder : List ( BlockId, a ) -> Decoder (StructuredText a)
+decoder blocks =
     Decode.field "schema" (constantStringDecoder "Invalid schema type" "dast")
-        |> Decode.andThen (\() -> Decode.field "document" documentDecoder)
+        |> Decode.andThen (\() -> Decode.field "document" (documentDecoder blocks))
         |> Decode.map StructuredText
 
 
-documentDecoder : Decoder (List RootChildNode)
-documentDecoder =
+{-| Decodes a DatoCMS block with its block ID
+-}
+blockDecoder : Decoder a -> Decoder ( BlockId, a )
+blockDecoder blockContentDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "id" blockIdDecoder)
+        blockContentDecoder
+
+
+blockIdDecoder : Decoder BlockId
+blockIdDecoder =
+    Decode.map BlockId Decode.string
+
+
+documentDecoder : List ( BlockId, a ) -> Decoder (List (RootChildNode a))
+documentDecoder blocks =
     Decode.field "type" (constantStringDecoder "Invalid root type" "root")
-        |> Decode.andThen (\() -> Decode.field "children" (Decode.list rootChildNodeDecoder))
+        |> Decode.andThen (\() -> Decode.field "children" (Decode.list (rootChildNodeDecoder blocks)))
 
 
-rootChildNodeDecoder : Decoder RootChildNode
-rootChildNodeDecoder =
+rootChildNodeDecoder : List ( BlockId, a ) -> Decoder (RootChildNode a)
+rootChildNodeDecoder blocks =
     Decode.field "type" Decode.string
         |> Decode.andThen
             (\typeString ->
@@ -44,6 +59,9 @@ rootChildNodeDecoder =
 
                     "blockquote" ->
                         Decode.map RootBlockquote blockquoteNodeDecoder
+
+                    "block" ->
+                        Decode.map RootBlock (blockNodeDecoder blocks)
 
                     _ ->
                         Decode.fail ("Unknown or unallowed root node type " ++ typeString)
@@ -295,9 +313,25 @@ blockquoteNodeChildDecoder =
             )
 
 
+blockNodeDecoder : List ( BlockId, a ) -> Decoder (BlockNode a)
+blockNodeDecoder blocks =
+    Decode.field "item" blockIdDecoder
+        |> Decode.andThen
+            (\blockIdToFind ->
+                List.find (\( blockId, _ ) -> blockId == blockIdToFind) blocks
+                    |> Maybe.map (\( blockId, blockContent ) -> BlockNode blockId blockContent |> Decode.succeed)
+                    |> Maybe.withDefault (Decode.fail ("Unable to find a matching block with ID " ++ blockIdToString blockIdToFind))
+            )
+
+
+blockIdToString : BlockId -> String
+blockIdToString (BlockId blockId) =
+    blockId
+
+
 {-| Parse a StructuredText into elm/html nodes
 -}
-toHtml : StructuredText -> Html msg
+toHtml : StructuredText a -> Html msg
 toHtml structuredText =
     text ""
 

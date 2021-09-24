@@ -1,17 +1,18 @@
 module Types exposing (..)
 
 
-type StructuredText
-    = StructuredText (List RootChildNode)
+type StructuredText a
+    = StructuredText (List (RootChildNode a))
 
 
-type RootChildNode
+type RootChildNode a
     = RootParagraph ParagraphNode
     | RootHeading HeadingNode
     | RootList ListNode
     | RootCode CodeNode
     | RootBlockquote BlockquoteNode
     | RootThematicBreak ThematicBreakNode
+    | RootBlock (BlockNode a)
 
 
 type ParagraphChildNode
@@ -83,6 +84,14 @@ type LinkNode
         , meta : List ( String, String )
         }
         (List LinkChildNode)
+
+
+type BlockNode a
+    = BlockNode BlockId a
+
+
+type BlockId
+    = BlockId String
 
 
 type Mark
