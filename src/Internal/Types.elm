@@ -1,8 +1,8 @@
-module StructuredText.Types exposing (..)
+module Internal.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), Document(..), DocumentItemId(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), ThematicBreakNode(..))
 
 
-type StructuredText a
-    = StructuredText (List (RootChildNode a))
+type Document a
+    = Document (List (RootChildNode a))
 
 
 type RootChildNode a
@@ -92,14 +92,14 @@ type LinkNode
 
 type InlineItemNode a
     = InlineItemNode
-        { itemId : ItemId
+        { itemId : DocumentItemId
         , itemContent : a
         }
 
 
 type ItemLinkNode a
     = ItemLinkNode
-        { itemId : ItemId
+        { itemId : DocumentItemId
         , itemContent : a
         , meta : List ( String, String )
         }
@@ -112,13 +112,13 @@ type ItemLinkChildNode
 
 type BlockNode a
     = BlockNode
-        { itemId : ItemId
+        { itemId : DocumentItemId
         , itemContent : a
         }
 
 
-type ItemId
-    = ItemId String
+type DocumentItemId
+    = DocumentItemId String
 
 
 type Mark

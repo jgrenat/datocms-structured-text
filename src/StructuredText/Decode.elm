@@ -1,21 +1,88 @@
 module StructuredText.Decode exposing (decoder, itemDecoder)
 
+{-|
+
+@docs decoder, itemDecoder
+
+-}
+
+import Internal.Types
+    exposing
+        ( BlockNode(..)
+        , BlockquoteChildNode(..)
+        , BlockquoteNode(..)
+        , CodeNode(..)
+        , Document(..)
+        , DocumentItemId(..)
+        , HeadingChildNode(..)
+        , HeadingLevel(..)
+        , HeadingNode(..)
+        , InlineItemNode(..)
+        , ItemLinkChildNode(..)
+        , ItemLinkNode(..)
+        , LinkChildNode(..)
+        , LinkNode(..)
+        , ListChildNode(..)
+        , ListItemChildNode(..)
+        , ListItemNode(..)
+        , ListNode(..)
+        , ListStyle(..)
+        , Mark(..)
+        , ParagraphChildNode(..)
+        , ParagraphNode(..)
+        , RootChildNode(..)
+        , SpanNode(..)
+        , ThematicBreakNode(..)
+        )
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Extra as Decode
 import List.Extra as List
-import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
+import StructuredText exposing (ItemId, StructuredText)
 
 
-{-| Decodes a DatoCMS Dast schema
+{-| Decodes a DatoCMS DAST schema.
+
+It requires a list of items that are used within [blocks](https://www.datocms.com/docs/structured-text/dast#block), [inline items](https://www.datocms.com/docs/structured-text/dast#inlineItem) and/or [item links](https://www.datocms.com/docs/structured-text/dast#itemLink) nodes.
+If you don't use any of those nodes in your DAST document, you can provide an empty list as below. See `itemDecoder` for a more complex example with items.
+
+    myFieldDecoderWithoutItems : Decoder (StructuredText a)
+    myFieldDecoderWithoutItems =
+        Decode.field "value" (StructuredText.Decode.decoder [])
+
 -}
 decoder : List ( ItemId, a ) -> Decoder (StructuredText a)
 decoder items =
     Decode.field "schema" (constantStringDecoder "Invalid schema type" "dast")
         |> Decode.andThen (\() -> Decode.field "document" (documentDecoder items))
-        |> Decode.map StructuredText
+        |> Decode.map Document
 
 
-{-| Decodes a DatoCMS item with its item ID
+{-| Decodes a DatoCMS item with its item ID. Useful to decode items before passing them to the DAST decoder:
+
+    type alias ImageItem =
+        { url : String
+        , alt : String
+        }
+
+    itemDecoder : Decoder ImageItem
+    itemDecoder =
+        Decode.map2 ImageItem
+            (Decode.field "url" Json.Decode.string)
+            (Decode.field "alt" Json.Decode.String)
+
+    itemsListDecoder : Decoder (List ( ItemId, ImageItem ))
+    itemsListDecoder =
+        StructuredText.Decode.itemDecoder itemDecoder
+            |> Decode.list
+
+    myFieldDecoder : Decoder (StructuredText ImageItem)
+    myFieldDecoder =
+        Decode.field "blocks" itemsListDecoder
+            |> Decode.andThen
+                (\items ->
+                    Decode.field "value" (StructuredText.Decode.decoder items)
+                )
+
 -}
 itemDecoder : Decoder a -> Decoder ( ItemId, a )
 itemDecoder itemContentDecoder =
@@ -24,18 +91,18 @@ itemDecoder itemContentDecoder =
         itemContentDecoder
 
 
-itemIdDecoder : Decoder ItemId
+itemIdDecoder : Decoder DocumentItemId
 itemIdDecoder =
-    Decode.map ItemId Decode.string
+    Decode.map DocumentItemId Decode.string
 
 
-documentDecoder : List ( ItemId, a ) -> Decoder (List (RootChildNode a))
+documentDecoder : List ( DocumentItemId, a ) -> Decoder (List (RootChildNode a))
 documentDecoder items =
     Decode.field "type" (constantStringDecoder "Invalid root type" "root")
         |> Decode.andThen (\() -> Decode.field "children" (Decode.list (rootChildNodeDecoder items)))
 
 
-rootChildNodeDecoder : List ( ItemId, a ) -> Decoder (RootChildNode a)
+rootChildNodeDecoder : List ( DocumentItemId, a ) -> Decoder (RootChildNode a)
 rootChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
@@ -85,13 +152,13 @@ codeNodeDecoder =
         )
 
 
-paragraphNodeDecoder : List ( ItemId, a ) -> Decoder (ParagraphNode a)
+paragraphNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ParagraphNode a)
 paragraphNodeDecoder items =
     Decode.field "children" (Decode.list (paragraphChildNodeDecoder items))
         |> Decode.map ParagraphNode
 
 
-paragraphChildNodeDecoder : List ( ItemId, a ) -> Decoder (ParagraphChildNode a)
+paragraphChildNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ParagraphChildNode a)
 paragraphChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
@@ -183,14 +250,14 @@ markDecoder =
             )
 
 
-headingNodeDecoder : List ( ItemId, a ) -> Decoder (HeadingNode a)
+headingNodeDecoder : List ( DocumentItemId, a ) -> Decoder (HeadingNode a)
 headingNodeDecoder items =
     Decode.map2 (\level children -> HeadingNode { level = level } children)
         (Decode.field "level" headingLevelDecoder)
         (Decode.field "children" (Decode.list (headingChildNodeDecoder items)))
 
 
-headingChildNodeDecoder : List ( ItemId, a ) -> Decoder (HeadingChildNode a)
+headingChildNodeDecoder : List ( DocumentItemId, a ) -> Decoder (HeadingChildNode a)
 headingChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
@@ -242,7 +309,7 @@ headingLevelDecoder =
             )
 
 
-listNodeDecoder : List ( ItemId, a ) -> Decoder (ListNode a)
+listNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ListNode a)
 listNodeDecoder items =
     Decode.map2 (\style children -> ListNode { style = style } children)
         (Decode.field "style" listStyleDecoder)
@@ -266,7 +333,7 @@ listStyleDecoder =
             )
 
 
-listChildNodeDecoder : List ( ItemId, a ) -> Decoder (ListChildNode a)
+listChildNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ListChildNode a)
 listChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
@@ -280,13 +347,13 @@ listChildNodeDecoder items =
             )
 
 
-listItemNodeDecoder : List ( ItemId, a ) -> Decoder (ListItemNode a)
+listItemNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ListItemNode a)
 listItemNodeDecoder items =
     Decode.map ListItemNode
         (Decode.field "children" (Decode.list (listItemChildNodeDecoder items)))
 
 
-listItemChildNodeDecoder : List ( ItemId, a ) -> Decoder (ListItemChildNode a)
+listItemChildNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ListItemChildNode a)
 listItemChildNodeDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
@@ -303,14 +370,14 @@ listItemChildNodeDecoder items =
             )
 
 
-blockquoteNodeDecoder : List ( ItemId, a ) -> Decoder (BlockquoteNode a)
+blockquoteNodeDecoder : List ( DocumentItemId, a ) -> Decoder (BlockquoteNode a)
 blockquoteNodeDecoder items =
     Decode.map2 (\attribution children -> BlockquoteNode { attribution = attribution } children)
         (Decode.optionalField "attribution" Decode.string)
         (Decode.field "children" (Decode.list (blockquoteNodeChildDecoder items)))
 
 
-blockquoteNodeChildDecoder : List ( ItemId, a ) -> Decoder (BlockquoteChildNode a)
+blockquoteNodeChildDecoder : List ( DocumentItemId, a ) -> Decoder (BlockquoteChildNode a)
 blockquoteNodeChildDecoder items =
     Decode.field "type" Decode.string
         |> Decode.andThen
@@ -324,7 +391,7 @@ blockquoteNodeChildDecoder items =
             )
 
 
-blockNodeDecoder : List ( ItemId, a ) -> Decoder (BlockNode a)
+blockNodeDecoder : List ( DocumentItemId, a ) -> Decoder (BlockNode a)
 blockNodeDecoder items =
     Decode.field "item" itemIdDecoder
         |> Decode.andThen
@@ -335,7 +402,7 @@ blockNodeDecoder items =
             )
 
 
-inlineItemNodeDecoder : List ( ItemId, a ) -> Decoder (InlineItemNode a)
+inlineItemNodeDecoder : List ( DocumentItemId, a ) -> Decoder (InlineItemNode a)
 inlineItemNodeDecoder items =
     Decode.field "item" itemIdDecoder
         |> Decode.andThen
@@ -346,10 +413,10 @@ inlineItemNodeDecoder items =
             )
 
 
-itemLinkNodeDecoder : List ( ItemId, a ) -> Decoder (ItemLinkNode a)
+itemLinkNodeDecoder : List ( DocumentItemId, a ) -> Decoder (ItemLinkNode a)
 itemLinkNodeDecoder items =
     let
-        itemLinkNodeItemDecoder : Decoder ( ItemId, a )
+        itemLinkNodeItemDecoder : Decoder ( DocumentItemId, a )
         itemLinkNodeItemDecoder =
             Decode.field "item" itemIdDecoder
                 |> Decode.andThen
@@ -381,8 +448,8 @@ itemLinkNodeChildDecoder =
             )
 
 
-itemIdToString : ItemId -> String
-itemIdToString (ItemId blockId) =
+itemIdToString : DocumentItemId -> String
+itemIdToString (DocumentItemId blockId) =
     blockId
 
 

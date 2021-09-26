@@ -1,0 +1,26 @@
+{
+  "name": "elm-datocms-structured-text",
+  "version": "1.0.0",
+  "description": "[DatoCMS](https://www.datocms.com/) is a headless CMS that uses a custom format based on a [unist tree](https://github.com/syntax-tree/unist) for its rich-text fields. This type of field is called `Structure Text` and the format specification is known as `DatoCMS Abstract Syntax Tree` or `DAST`",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "elm-review": "^2.6.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgrenat/datocms-structured-text.git"
+  },
+  "author": "",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/jgrenat/datocms-structured-text/issues"
+  },
+  "homepage": "https://github.com/jgrenat/datocms-structured-text#readme"
+}
