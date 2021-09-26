@@ -1,8 +1,8 @@
-module StructuredText.Decode exposing (decoder, itemDecoder)
+module StructuredText.Decode exposing (decoder)
 
 {-|
 
-@docs decoder, itemDecoder
+@docs decoder
 
 -}
 
@@ -43,11 +43,20 @@ import StructuredText exposing (ItemId, StructuredText)
 {-| Decodes a DatoCMS DAST schema.
 
 It requires a list of items that are used within [blocks](https://www.datocms.com/docs/structured-text/dast#block), [inline items](https://www.datocms.com/docs/structured-text/dast#inlineItem) and/or [item links](https://www.datocms.com/docs/structured-text/dast#itemLink) nodes.
-If you don't use any of those nodes in your DAST document, you can provide an empty list as below. See `itemDecoder` for a more complex example with items.
+If you don't use any of those nodes in your DAST document, you can provide an empty list.
 
-    myFieldDecoderWithoutItems : Decoder (StructuredText a)
-    myFieldDecoderWithoutItems =
-        Decode.field "value" (StructuredText.Decode.decoder [])
+    type alias ImageItem =
+        { url : String
+        , alt : String
+        }
+
+    items : List ( ItemId, ImageItem )
+    items =
+        [ ( itemId "123456789", { url = "https://www.datocms-assets.com/some/path.png", alt = "Some image" } ) ]
+
+    myFieldDecoder : Decoder (StructuredText ImageItem)
+    myFieldDecoder =
+        Decode.field "value" (StructuredText.Decode.decoder items)
 
 -}
 decoder : List ( ItemId, a ) -> Decoder (StructuredText a)
@@ -55,40 +64,6 @@ decoder items =
     Decode.field "schema" (constantStringDecoder "Invalid schema type" "dast")
         |> Decode.andThen (\() -> Decode.field "document" (documentDecoder items))
         |> Decode.map Document
-
-
-{-| Decodes a DatoCMS item with its item ID. Useful to decode items before passing them to the DAST decoder:
-
-    type alias ImageItem =
-        { url : String
-        , alt : String
-        }
-
-    itemDecoder : Decoder ImageItem
-    itemDecoder =
-        Decode.map2 ImageItem
-            (Decode.field "url" Json.Decode.string)
-            (Decode.field "alt" Json.Decode.String)
-
-    itemsListDecoder : Decoder (List ( ItemId, ImageItem ))
-    itemsListDecoder =
-        StructuredText.Decode.itemDecoder itemDecoder
-            |> Decode.list
-
-    myFieldDecoder : Decoder (StructuredText ImageItem)
-    myFieldDecoder =
-        Decode.field "blocks" itemsListDecoder
-            |> Decode.andThen
-                (\items ->
-                    Decode.field "value" (StructuredText.Decode.decoder items)
-                )
-
--}
-itemDecoder : Decoder a -> Decoder ( ItemId, a )
-itemDecoder itemContentDecoder =
-    Decode.map2 Tuple.pair
-        (Decode.field "id" itemIdDecoder)
-        itemContentDecoder
 
 
 itemIdDecoder : Decoder DocumentItemId

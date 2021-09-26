@@ -29,20 +29,26 @@ type alias ImageItem =
         
         
 -- Then a decoder for those items
-itemDecoder : Decoder Item
+itemDecoder : Decoder  (List (ItemId, Item))
 itemDecoder =
     Decode.field "_modelApiKey" Decode.string
-    |> Decode.andThen (\model -> 
-        case model of
-            "image" -> 
-                Decode.map Image imageItemDecoder
-                
-            "author" -> 
-                Decode.map Author authorItemDecoder
-                
-            _ ->
-                Decode.fail "Unexpected item type"
-    )
+        |> Decode.andThen (\model -> 
+            case model of
+                "image" -> 
+                    Decode.map2 Image itemIdDecoder imageItemDecoder
+                    
+                "author" -> 
+                    Decode.map2 Author itemIdDecoder authorItemDecoder
+                    
+                _ ->
+                    Decode.fail "Unexpected item type"
+        )
+        |> Decode.map2 Tuple.pair itemIdDecoder
+    
+itemIdDecoder : Decoder ItemId
+itemIdDecoder =
+    Decode.field "id" Decode.string 
+        |> Decode.map StructuredText.itemId
 
 imageItemDecoder : Decoder ImageItem
 imageItemDecoder =
@@ -56,10 +62,6 @@ authorItemDecoder =
         (Decode.field "url" Json.Decode.string)
         (Decode.field "alt" Json.Decode.String)
 
-itemsListDecoder : Decoder (List ( ItemId, ImageItem ))
-itemsListDecoder =
-    StructuredText.Decode.itemDecoder itemDecoder
-        |> Decode.list
 
 
 -- Decode "blocks" and "links" fields from a Structured Text 
@@ -68,8 +70,8 @@ itemsListDecoder =
 myFieldDecoder : Decoder (StructuredText ImageItem)
 myFieldDecoder =
     Decode.map2 List.concat 
-        (Decode.field "blocks" itemsListDecoder)
-        (Decode.field "links" itemsListDecoder)
+        (Decode.field "blocks" (Decode.list itemDecoder))
+        (Decode.field "links" (Decode.list itemDecoder))
         |> Decode.andThen
             (\items ->
                 Decode.field "value" (StructuredText.Decode.decoder items)

@@ -1,12 +1,12 @@
-module StructuredText exposing (StructuredText, ItemId)
+module StructuredText exposing (StructuredText, ItemId, itemId)
 
 {-|
 
-@docs StructuredText, ItemId
+@docs StructuredText, ItemId, itemId
 
 -}
 
-import Internal.Types exposing (Document, DocumentItemId)
+import Internal.Types exposing (Document, DocumentItemId(..))
 
 
 {-| Represents a DatoCMS DAST document used in Structured Text fields. The `a` parameter represents the type of the custom blocks used inside the document.
@@ -19,3 +19,10 @@ type alias StructuredText a =
 -}
 type alias ItemId =
     DocumentItemId
+
+
+{-| Create an item ID from a string
+-}
+itemId : String -> ItemId
+itemId id =
+    DocumentItemId id
