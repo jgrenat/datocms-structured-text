@@ -1,9 +1,9 @@
 module DecodeTest exposing (..)
 
 import Expect exposing (Expectation)
+import Internal.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), Document(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), ThematicBreakNode(..))
 import Json.Decode as Decode exposing (Decoder, Error(..))
 import StructuredText.Decode
-import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 import Test exposing (..)
 
 
@@ -49,7 +49,7 @@ suite =
                         result =
                             Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
-                    Expect.equal (Ok (StructuredText [])) result
+                    Expect.equal (Ok (Document [])) result
             , test "should reject a document with invalid schema type" <|
                 \_ ->
                     let
@@ -89,7 +89,7 @@ suite =
                         result =
                             Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
-                    Expect.equal (Ok (StructuredText [ RootThematicBreak ThematicBreakNode ])) result
+                    Expect.equal (Ok (Document [ RootThematicBreak ThematicBreakNode ])) result
             , test "should decode a document with a simple code" <|
                 \_ ->
                     let
@@ -106,7 +106,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootCode
                                     (CodeNode
                                         { code = "type ParagraphChildNode = ParagraphChildNode String"
@@ -127,7 +127,7 @@ suite =
                         result =
                             Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
-                    Expect.equal (Ok (StructuredText [ RootParagraph (ParagraphNode []) ])) result
+                    Expect.equal (Ok (Document [ RootParagraph (ParagraphNode []) ])) result
             , test "should decode a document with a paragraph containing a span with no mark" <|
                 \_ ->
                     let
@@ -144,7 +144,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootParagraph
                                     (ParagraphNode [ ParagraphSpan (SpanNode { value = "SpanValue", marks = [] }) ])
                                 ]
@@ -170,7 +170,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphSpan
@@ -200,7 +200,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphLink
@@ -253,7 +253,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphLink
@@ -288,7 +288,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootHeading
                                     (HeadingNode { level = H2 }
                                         [ HeadingSpan (SpanNode { value = "SpanValue", marks = [ Emphasis ] })
@@ -342,7 +342,7 @@ suite =
                         result =
                             Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
-                    Expect.equal (Ok (StructuredText [ RootList (ListNode { style = Bulleted } []) ])) result
+                    Expect.equal (Ok (Document [ RootList (ListNode { style = Bulleted } []) ])) result
             , test "should fail decoding a document with a list with invalid style" <|
                 \_ ->
                     let
@@ -391,7 +391,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootList
                                     (ListNode { style = Bulleted }
                                         [ ListListItem
@@ -420,7 +420,7 @@ suite =
                             Decode.decodeString (StructuredText.Decode.decoder []) input
                     in
                     Expect.equal
-                        (Ok (StructuredText [ RootBlockquote (BlockquoteNode { attribution = Nothing } []) ]))
+                        (Ok (Document [ RootBlockquote (BlockquoteNode { attribution = Nothing } []) ]))
                         result
             , test "should decode a document with a blockquote with children and attribution" <|
                 \_ ->
@@ -438,7 +438,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootBlockquote
                                     (BlockquoteNode { attribution = Just "Thanks to myself" }
                                         [ BlockquoteParagraph
@@ -473,7 +473,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootBlock
                                     (BlockNode
                                         { itemId = ItemId "58599620"
@@ -536,7 +536,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootHeading
                                     (HeadingNode { level = H4 }
                                         [ HeadingInlineItem
@@ -579,7 +579,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphInlineItem
@@ -626,7 +626,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphItemLink
@@ -677,7 +677,7 @@ suite =
                     in
                     Expect.equal
                         (Ok
-                            (StructuredText
+                            (Document
                                 [ RootHeading
                                     (HeadingNode { level = H5 }
                                         [ HeadingItemLink

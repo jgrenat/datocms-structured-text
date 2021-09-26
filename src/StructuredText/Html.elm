@@ -1,10 +1,44 @@
-module StructuredText.Html exposing (ItemLinkData, RenderParameters, render)
+module StructuredText.Html exposing (RenderParameters, ItemLinkData, render, emptyRenderParameters)
+
+{-| Once your DAST document is parsed from JSON, you get an opaque `StructuredText` value that you then need to render into HTML.
+
+This is what the `render` method is for! But we need a little help from you to render the [blocks](https://www.datocms.com/docs/structured-text/dast#block), [inline items](https://www.datocms.com/docs/structured-text/dast#inlineItem) and [item links](https://www.datocms.com/docs/structured-text/dast#itemLink) nodes.
+That's what you need to provide `RenderParameters`. If you don't have any custom item in your document, you can use the `emptyRenderParameters`.
+
+@docs RenderParameters, ItemLinkData, render, emptyRenderParameters
+
+-}
 
 import Html exposing (Html, a, blockquote, code, em, footer, h1, h2, h3, h4, h5, h6, hr, li, mark, ol, p, pre, span, strong, text, ul)
 import Html.Attributes exposing (attribute, class, href, style)
-import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
+import Internal.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), Document(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), ThematicBreakNode(..))
 
 
+{-| Those parameters allow us to know how to render [blocks](https://www.datocms.com/docs/structured-text/dast#block), [inline items](https://www.datocms.com/docs/structured-text/dast#inlineItem) and [item links](https://www.datocms.com/docs/structured-text/dast#itemLink) nodes.
+
+If you don't use any or all those types, you can start from the `emptyRenderParameters`
+
+The second argument is a list of children nodes.
+
+    type alias ImageItem =
+        { url : String
+        , alt : String
+        }
+
+    renderParameters : RenderParameters imageItem msg
+    renderParameters =
+        { renderBlock =
+            \imageItem ->
+                div [ class "image-block" ] [ img [ src imageItem.url, alt imageItem.alt ] [] ]
+        , renderInlineItem =
+            \imageItem ->
+                img [ src imageItem.url, alt imageItem.alt, class "inline-image" ] []
+        , renderItemLink =
+            \itemLinkData children ->
+                a [ href itemLinkData.item.url ] children
+        }
+
+-}
 type alias RenderParameters a msg =
     { renderBlock : a -> Html msg
     , renderInlineItem : a -> Html msg
@@ -12,16 +46,52 @@ type alias RenderParameters a msg =
     }
 
 
+{-| Parameters that you receive when rendering an item link. `meta` is a list of key-value pairs provided in DatoCMS.
+
+    type alias ImageItem =
+        { url : String
+        , alt : String
+        }
+
+    renderParameters : RenderParameters imageItem msg
+    renderParameters =
+        { emptyRenderParameters
+            | renderItemLink =
+                \itemLinkData children ->
+                    let
+                        metaAttributes =
+                            List.map (\( key, value ) -> Html.attribute key value) itemLinkData.meta
+                    in
+                    a (href itemLinkData.item.url :: metaAttributes) children
+        }
+
+-}
 type alias ItemLinkData a =
     { item : a
     , meta : List ( String, String )
     }
 
 
-{-| Render a StructuredText document as elm/html nodes
+{-| Default renderParameters that basically do nothing.
 -}
-render : RenderParameters a msg -> StructuredText a -> List (Html msg)
-render renderParameters (StructuredText rootChildrenNodes) =
+emptyRenderParameters : RenderParameters a msg
+emptyRenderParameters =
+    { renderBlock = \_ -> text ""
+    , renderInlineItem = \_ -> text ""
+    , renderItemLink = \_ children -> span [] children
+    }
+
+
+{-| Render a StructuredText document as elm/html nodes
+
+    main =
+        Decode.decodeString myFieldDecoder myJsonDastDocument
+            |> Result.map (StructuredText.Decode.render imageItemRenderParameters)
+            |> Result.withDefault (text "Invalid document")
+
+-}
+render : RenderParameters a msg -> Document a -> List (Html msg)
+render renderParameters (Document rootChildrenNodes) =
     List.map (renderRootChildNode renderParameters) rootChildrenNodes
 
 

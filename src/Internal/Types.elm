@@ -1,8 +1,8 @@
-module StructuredText.Types exposing (..)
+module Internal.Types exposing (..)
 
 
-type StructuredText a
-    = StructuredText (List (RootChildNode a))
+type Document a
+    = Document (List (RootChildNode a))
 
 
 type RootChildNode a

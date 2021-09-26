@@ -1,22 +1,60 @@
-module StructuredText.Decode exposing (decoder, itemDecoder, toHtml)
+module StructuredText.Decode exposing (decoder, itemDecoder)
 
-import Html exposing (Html, text)
+{-|
+
+@docs decoder, itemDecoder
+
+-}
+
+import Internal.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), Document(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), ThematicBreakNode(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Extra as Decode
 import List.Extra as List
-import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 
 
-{-| Decodes a DatoCMS Dast schema
+{-| Decodes a DatoCMS DAST schema.
+
+It requires a list of items that are used within [blocks](https://www.datocms.com/docs/structured-text/dast#block), [inline items](https://www.datocms.com/docs/structured-text/dast#inlineItem) and/or [item links](https://www.datocms.com/docs/structured-text/dast#itemLink) nodes.
+If you don't use any of those nodes in your DAST document, you can provide an empty list as below. See `itemDecoder` for a more complex example with items.
+
+    myFieldDecoderWithoutItems : Decoder (StructuredText a)
+    myFieldDecoderWithoutItems =
+        Decode.field "value" (StructuredText.Decode.decoder [])
+
 -}
-decoder : List ( ItemId, a ) -> Decoder (StructuredText a)
+decoder : List ( ItemId, a ) -> Decoder (Document a)
 decoder items =
     Decode.field "schema" (constantStringDecoder "Invalid schema type" "dast")
         |> Decode.andThen (\() -> Decode.field "document" (documentDecoder items))
-        |> Decode.map StructuredText
+        |> Decode.map Document
 
 
-{-| Decodes a DatoCMS item with its item ID
+{-| Decodes a DatoCMS item with its item ID. Useful to decode items before passing them to the DAST decoder:
+
+    type alias ImageItem =
+        { url : String
+        , alt : String
+        }
+
+    itemDecoder : Decoder ImageItem
+    itemDecoder =
+        Decode.map2 ImageItem
+            (Decode.field "url" Json.Decode.string)
+            (Decode.field "alt" Json.Decode.String)
+
+    itemsListDecoder : Decoder (List ( ItemId, ImageItem ))
+    itemsListDecoder =
+        StructuredText.Decode.itemDecoder itemDecoder
+            |> Decode.list
+
+    myFieldDecoder : Decoder (StructuredText ImageItem)
+    myFieldDecoder =
+        Decode.field "blocks" itemsListDecoder
+            |> Decode.andThen
+                (\items ->
+                    Decode.field "value" (StructuredText.Decode.decoder items)
+                )
+
 -}
 itemDecoder : Decoder a -> Decoder ( ItemId, a )
 itemDecoder itemContentDecoder =
@@ -64,7 +102,7 @@ rootChildNodeDecoder items =
                         Decode.map RootBlock (blockNodeDecoder items)
 
                     _ ->
-                        Decode.fail ("Unknown or unallowed root node type " ++ typeString)
+                        Decode.fail ("Unknown or unauthorized root node type " ++ typeString)
             )
 
 
@@ -385,13 +423,6 @@ itemLinkNodeChildDecoder =
 itemIdToString : ItemId -> String
 itemIdToString (ItemId blockId) =
     blockId
-
-
-{-| Parse a StructuredText into elm/html nodes
--}
-toHtml : StructuredText a -> Html msg
-toHtml structuredText =
-    text ""
 
 
 constantStringDecoder : String -> String -> Decoder ()

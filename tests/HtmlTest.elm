@@ -3,8 +3,8 @@ module HtmlTest exposing (..)
 import Expect exposing (Expectation)
 import Html exposing (Html, a, blockquote, code, em, footer, h2, hr, img, li, mark, ol, p, pre, span, strong, text, ul)
 import Html.Attributes exposing (alt, attribute, class, href, src, style)
+import Internal.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), Document(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), ThematicBreakNode(..))
 import StructuredText.Html exposing (ItemLinkData, RenderParameters)
-import StructuredText.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemId(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), StructuredText(..), ThematicBreakNode(..))
 import Test exposing (..)
 
 
@@ -56,7 +56,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText []
+                            Document []
 
                         result =
                             StructuredText.Html.render emptyRenderer input
@@ -66,7 +66,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText [ RootThematicBreak ThematicBreakNode ]
+                            Document [ RootThematicBreak ThematicBreakNode ]
 
                         result =
                             StructuredText.Html.render emptyRenderer input
@@ -76,7 +76,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootCode
                                     (CodeNode
                                         { code = "main = 1"
@@ -99,7 +99,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphSpan (SpanNode { value = "Hello", marks = [] }) ]
@@ -116,7 +116,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphSpan (SpanNode { value = "Hello", marks = [ Emphasis, Code, Highlight ] })
@@ -147,7 +147,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphLink
@@ -171,7 +171,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootHeading
                                     (HeadingNode { level = H2 } [ HeadingSpan (SpanNode { value = "Hello", marks = [] }) ])
                                 ]
@@ -186,7 +186,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootBlockquote
                                     (BlockquoteNode { attribution = Just "Myself" }
                                         [ BlockquoteParagraph
@@ -212,7 +212,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootList
                                     (ListNode { style = Numbered }
                                         [ ListListItem
@@ -243,7 +243,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootList
                                     (ListNode { style = Bulleted }
                                         [ ListListItem
@@ -274,7 +274,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootBlock
                                     (BlockNode
                                         { itemId = ItemId "58599620"
@@ -294,7 +294,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphInlineItem
@@ -320,7 +320,7 @@ suite =
                 \_ ->
                     let
                         input =
-                            StructuredText
+                            Document
                                 [ RootParagraph
                                     (ParagraphNode
                                         [ ParagraphItemLink
