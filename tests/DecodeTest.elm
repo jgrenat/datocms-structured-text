@@ -1,4 +1,4 @@
-module DecodeTest exposing (ImageFormat(..), ImageItem, imageBlockDecoder, imageFormatDecoder, suite)
+module DecodeTest exposing (ImageFormat(..), ImageItem, suite)
 
 import Expect exposing (Expectation)
 import Internal.Types exposing (BlockNode(..), BlockquoteChildNode(..), BlockquoteNode(..), CodeNode(..), Document(..), DocumentItemId(..), HeadingChildNode(..), HeadingLevel(..), HeadingNode(..), InlineItemNode(..), ItemLinkChildNode(..), ItemLinkNode(..), LinkChildNode(..), LinkNode(..), ListChildNode(..), ListItemChildNode(..), ListItemNode(..), ListNode(..), ListStyle(..), Mark(..), ParagraphChildNode(..), ParagraphNode(..), RootChildNode(..), SpanNode(..), ThematicBreakNode(..))
@@ -14,26 +14,6 @@ type alias ImageItem =
 type ImageFormat
     = FullWidth
     | ImageWidth
-
-
-imageBlockDecoder : Decoder ImageItem
-imageBlockDecoder =
-    Decode.map2 ImageItem
-        (Decode.at [ "image", "url" ] Decode.string)
-        (Decode.field "fullWidth" imageFormatDecoder)
-
-
-imageFormatDecoder : Decoder ImageFormat
-imageFormatDecoder =
-    Decode.bool
-        |> Decode.map
-            (\isFullWidth ->
-                if isFullWidth then
-                    FullWidth
-
-                else
-                    ImageWidth
-            )
 
 
 suite : Test
@@ -692,28 +672,6 @@ suite =
                                     )
                                 ]
                             )
-                        )
-                        result
-            ]
-        , describe "blockDecoder"
-            [ test "should decode an image block" <|
-                \_ ->
-                    let
-                        input =
-                            """{
-                               "image": {
-                                 "url": "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg"
-                               },
-                               "fullWidth": true,
-                               "id": "58599620"
-                             }"""
-
-                        result =
-                            Decode.decodeString (StructuredText.Decode.itemDecoder imageBlockDecoder) input
-                    in
-                    Expect.equal
-                        (Ok
-                            ( DocumentItemId "58599620", ImageItem "https://www.datocms-assets.com/53557/1628850590-elm-logo.svg" FullWidth )
                         )
                         result
             ]
