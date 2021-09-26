@@ -1,6 +1,5 @@
-module StructuredText.Decode exposing (decoder, itemDecoder, toHtml)
+module StructuredText.Decode exposing (decoder, itemDecoder)
 
-import Html exposing (Html, text)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Extra as Decode
 import List.Extra as List
@@ -385,13 +384,6 @@ itemLinkNodeChildDecoder =
 itemIdToString : ItemId -> String
 itemIdToString (ItemId blockId) =
     blockId
-
-
-{-| Parse a StructuredText into elm/html nodes
--}
-toHtml : StructuredText a -> Html msg
-toHtml structuredText =
-    text ""
 
 
 constantStringDecoder : String -> String -> Decoder ()
